@@ -134,91 +134,6 @@ class REConv(nn.Module):
 
             return rst
 
-
-'''
-class REConv(nn.Module):
-    """
-    Adapted from
-    https://docs.dgl.ai/_modules/dgl/nn/pytorch/conv/gatconv.html#GATConv
-    """
-
-    def __init__(self,
-                 in_feats,
-                 out_feats,
-                 norm='both',
-                 num_type=4,
-                 weight=True,
-                 bias=True,
-                 activation=None):
-        super(REConv, self).__init__()
-        if norm not in ('none', 'both', 'right', 'left'):
-            raise DGLError('Invalid norm value. Must be either "none", "both", "right" or "left".'
-                           ' But got "{}".'.format(norm))
-        self._in_feats = in_feats
-        self._out_feats = out_feats
-        self._norm = norm
-
-        if weight:
-            self.weight = nn.Parameter(th.Tensor(in_feats, out_feats))
-        else:
-            self.register_parameter('weight', None)
-
-        if bias:
-            self.bias = nn.Parameter(th.Tensor(out_feats))
-        else:
-            self.register_parameter('bias', None)
-
-        self.weight_type = nn.Parameter(th.ones(num_type))
-
-        self.reset_parameters()
-
-        self._activation = activation
-
-    def reset_parameters(self):
-        if self.weight is not None:
-            init.xavier_uniform_(self.weight)
-        if self.bias is not None:
-            init.zeros_(self.bias)
-
-    def forward(self, graph, feat, type_info):
-        with graph.local_scope():
-            aggregate_fn = fn.copy_u('h', 'm')
-
-            if self._norm in ['left', 'both']:
-                degs = graph.out_degrees().float().clamp(min=1)
-                if self._norm == 'both':
-                    norm = th.pow(degs, -0.5)
-                else:
-                    norm = 1.0 / degs
-                shp = norm.shape + (1,) * (feat.dim() - 1)
-                norm = th.reshape(norm, shp)
-                feat = feat * norm
-
-            feat = th.matmul(feat, self.weight)
-            graph.srcdata['h'] = feat * self.weight_type[type_info].reshape(-1, 1)
-            graph.update_all(aggregate_fn, fn.sum(msg='m', out='h'))
-            rst = graph.dstdata['h']  # n*num_nodetype
-
-            if self._norm in ['right', 'both']:
-                degs = graph.in_degrees().float().clamp(min=1)
-                if self._norm == 'both':
-                    norm = th.pow(degs, -0.5)
-                else:
-                    norm = 1.0 / degs
-                shp = norm.shape + (1,) * (feat.dim() - 1)
-                norm = th.reshape(norm, shp)
-                rst = rst * norm
-
-            if self.bias is not None:
-                rst = rst + self.bias
-
-            if self._activation is not None:
-                rst = self._activation(rst)
-
-            return rst
-'''
-
-
 class AGTLayer(nn.Module):
     def __init__(self, embeddings_dimension, nheads=2, att_dropout=0.5, emb_dropout=0.5, temper=1.0, rl=False, rl_dim=4,
                  beta=1):
@@ -304,23 +219,16 @@ class SubgraphAttention(nn.Module):
         # readout_h: [n, m]
         # 增加一个 batch_size 维度（假设 batch_size=1）
         readout_h = readout_h.unsqueeze(1)  # [n, m] -> [n, 1, m]
-
-        # 注意力计算需要 [seq_len, batch_size, d_model]
         readout_h = readout_h.permute(0, 1, 2)  # [n, 1, m] -> [n, 1, m]
-
-        # Self-attention
         attn_output, _ = self.self_attention(readout_h, readout_h, readout_h)  # [n, 1, m]
 
-        # 残差连接 + LayerNorm
         readout_h = readout_h + self.dropout(attn_output)
         readout_h = self.norm(readout_h)
 
-        # Feed-forward network
         ff_output = self.ffn(readout_h)  # [n, 1, m]
         readout_h = readout_h + self.dropout(ff_output)
         readout_h = self.norm(readout_h)
 
-        # 恢复形状 [n, m]
         readout_h = readout_h.squeeze(1)  # [n, 1, m] -> [n, m]
         return readout_h
 
@@ -372,7 +280,6 @@ class HINormer(nn.Module):
         self.leaky = nn.LeakyReLU(0.01)
         self.embed_type = 128
         # self.fc = nn.Linear(input_dimensions, embeddings_dimension)
-        # 加入激活函数
         self.fc = nn.Sequential(
             nn.Linear(input_dimensions, embeddings_dimension),
             nn.ReLU(inplace=True)
@@ -419,7 +326,7 @@ class HINormer(nn.Module):
         #     nn.Linear(2 * self.embeddings_dimension, self.embeddings_dimension),  # 拼接后的维度
         #     self.leaky,
         #     self.Drop,
-        #     nn.Linear(self.embeddings_dimension, 1)  # 输出一个标量分数
+        #     nn.Linear(self.embeddings_dimension, 1) 
         # )
 
         self.num_subgraph_attention_layers = num_subgraph_attention_layers
@@ -499,38 +406,9 @@ class HINormer(nn.Module):
             # 子图间注意力机制
             for layer in self.subgraph_attention_layers:
                 readout_h = layer(readout_h)
-            '''
-            交叉注意力机制,这样做的逻辑是利用完整图的表示来关注多个子图的表示,并根据子图的嵌入来调整完整图的权重。
-            
-            query = self.Graph_W_q(readout_full_h)  # [1, embedding_dims]
-            key = self.Graph_W_k(readout_h)  # [n_subgraphs, embedding_dims]
-            value = self.Graph_W_v(readout_h)  # [n_subgraphs, embedding_dims]
-            # 扩展完整图的表示为每个子图对应的查询（Query）
-            attn_scores = torch.matmul(query, key.transpose(0, 1))  # [n, 1]
-            attn_scores = attn_scores / (self.embeddings_dimension ** 0.5)  # 缩放
-            attn_weights = F.softmax(attn_scores, dim=-1)  # [n, 1]，对子图维度做 softmax
-            subgraph_h = attn_weights.transpose(-1, -2) * value
-            subgraph_h = self.layer_norm_graph(subgraph_h)
-            '''
             subgraph_h = self.crossAttn(readout_full_h, readout_h)
-            # aggregated_subgraph_h = torch.matmul(attn_weights.unsqueeze(0), value).squeeze(0)  # 加权聚合子图表示,[embedding_dim]
-            '''
-            query = readout_full_h.expand(readout_h.size(0), -1)  # [n, embedding_size]
-            # 子图表示作为键（Key）和值（Value）
-            key = readout_h  # [n, embedding_size]
-            value = readout_h  # [n, embedding_size]
-            Q = query.unsqueeze(1).expand(-1, query.size(0), -1)  # [n, n, embedding_size]
-            K = key.unsqueeze(0).expand(query.size(0), -1, -1)  # [n, n, embedding_size]
-            # 计算注意力分数：query 与 key 的交互（点积）
-            attn_scores = self.attn_graph(torch.cat([Q, K], dim=-1)).squeeze(-1)  # [n, n]
-            # 计算注意力权重
-            attn_weights = torch.softmax(attn_scores, dim=-1)  # [n, n]
-            # 通过注意力权重加权子图表示
-            subgraphs_h_weighted = torch.matmul(attn_weights, value)  # [n, embedding_size]
-            '''
             readout_h = torch.cat([subgraph_h, readout_full_h.expand(subgraph_h.size(0), -1)], dim=-1)
             readout_h = self.fc_fusion(readout_h)
-            # '''
         else:
             readout_h = self.expand(readout_h)
         if fine_tune:
@@ -557,25 +435,6 @@ class HINormer(nn.Module):
         readout_vector = self.layer_norm_node(readout_vector)
         readout_vector = readout_vector.mean(dim=1)
         return readout_vector
-
-    # NT-Xent 损失函数
-    def loss_cl(self, x1, x2):
-        T = 0.5
-        batch_size, _ = x1.size()
-
-        # batch_size *= 2
-        # x1, x2 = torch.cat((x1, x2), dim=0), torch.cat((x2, x1), dim=0)
-
-        x1_abs = x1.norm(dim=1)
-        x2_abs = x2.norm(dim=1)
-
-        sim_matrix = torch.einsum('ik,jk->ij', x1, x2) / torch.einsum('i,j->ij', x1_abs, x2_abs)
-        sim_matrix = torch.exp(sim_matrix / T)
-        pos_sim = sim_matrix[range(batch_size), range(batch_size)]
-        loss = pos_sim / (sim_matrix.sum(dim=1) - pos_sim)
-        loss = - torch.log(loss).mean()
-
-        return loss
 
     def sim(self, z1: torch.Tensor, z2: torch.Tensor):
         if z1.dim() == 1:
@@ -621,6 +480,3 @@ class HINormer(nn.Module):
 
     def SumLoss(self, original, positive):
         return original + self.alpha * positive
-
-    # def regular(self, logits, positive_logits):
-
