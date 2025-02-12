@@ -328,8 +328,6 @@ if __name__ == '__main__':
             negative_batched_node_type = negative_batched_data[0].ndata['node_type'].to(device)
             negative_batched_edge_type = negative_batched_data[0].edata['edge_type'].to(device)
 
-            # sample
-            # print(f'pre_sampled_idx length: {len(pre_sampled_idx)}')
             subgraph = True
             node_seq = batched_data[2].squeeze(0)
 
