@@ -24,8 +24,6 @@ class data_loader:
         self.path = path
         self.nodes = self.load_nodes()
         self.links = self.load_links()
-        # self.labels_train = self.load_labels('label.dat')
-        # self.labels_test = self.load_labels('label.dat.test')
 
     def get_sub_graph(self, node_types_tokeep):
         """
@@ -326,18 +324,5 @@ class data_loader:
                     nodes['total'] += 1
                 else:
                     raise Exception("Too few information to parse!")
-        # shift = 0
-        # attr = {}
-        # for i in range(len(nodes['count'])):
-        #     nodes['shift'][i] = shift
-        #     if shift in nodes['attr']:
-        #         mat = []
-        #         for j in range(shift, shift + nodes['count'][i]):
-        #             mat.append(nodes['attr'][j])
-        #         attr[i] = np.array(mat)
-        #     else:
-        #         attr[i] = None
-        #     shift += nodes['count'][i]
-        # nodes['attr'] = attr
         return nodes
 
