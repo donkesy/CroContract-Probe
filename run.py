@@ -247,10 +247,8 @@ if __name__ == '__main__':
         for project in os.listdir(cur_path):
             sub_valid_graphs, sub_valid_positive_graphs, sub_valid_negative_graphs = [], [], []
             for file in os.listdir(os.path.join(cur_path, project)):
-                # print(os.path.join(cur_path, project, file))
                 features, adjM, dl = load_data(pretrain=True, path=os.path.join(cur_path, project, file))
                 if type(adjM) is int:
-                    # print(f'error file:{os.path.join(cur_path, project, file)}')
                     continue
                 sub_g, sub_positive_g, sub_negative_g, _ = graphs_augmentation(dl, adjM, features, nodetype2id)
                 sub_valid_graphs.append(sub_g)
@@ -264,7 +262,6 @@ if __name__ == '__main__':
                     valid_labels.append(1)
                 else:
                     valid_labels.append(0)
-                # valid_labels.append(cross_name2label[vul])
 
     train_labels = []
     test_labels = []
@@ -295,7 +292,6 @@ if __name__ == '__main__':
                             train_labels.append(1)
                         else:
                             train_labels.append(0)
-                        # train_labels.append(name2label[datapath])
                     else:
                         test_graphs.append(dgl.merge(sub_graphs))
                         test_positive_graphs.append(dgl.merge(sub_positive_graphs))
@@ -304,7 +300,6 @@ if __name__ == '__main__':
                             test_labels.append(1)
                         else:
                             test_labels.append(0)
-                        # test_labels.append(name2label[datapath])
                         if datapath == 'cleandata/cleandata_256':
                             valid_graphs.append(dgl.merge(sub_graphs))
                             valid_positive_graphs.append(dgl.merge(sub_positive_graphs))
