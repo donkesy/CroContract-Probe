@@ -19,7 +19,6 @@ class GraphDataset(DGLDataset):
         self.node_seqs = []
         for ii in range(len(graphs)):
             nodes = self.graphs[ii].num_nodes()
-            # len_seq_detect = 8
             node_seq = torch.zeros(nodes, len_seq_detect).long()
             n = 0
             sampled_idx = []
@@ -55,19 +54,13 @@ class GraphDataset(DGLDataset):
                     flag = True
                     for i in range(len(sampled_idx)):
                         sim = custom_similarity(temp.tolist(), node_seq[sampled_idx[i]].tolist())
-                        # print(temp.tolist(), end="\t")
-                        # print(node_seq[sampled_idx[i]].tolist())
-                        # print(f'similarity: {sim}')
                         if sim > 0.5:
                             flag = False
-                            # print('similarity:')
-                            # print(node_seq[sampled_idx[i]])
                             break
                     if flag:
                         sampled_idx.append(n)
                 n += 1
             sampled_idx = random.sample(sampled_idx, int(len(sampled_idx) * 1))
-            # print(sampled_idx)
             self.node_seqs.append(node_seq[sampled_idx])
             # print(f"len of node_seq: {len(node_seq[sampled_idx])}")
 
