@@ -369,10 +369,3 @@ if __name__ == '__main__':
                                        f'_batchsize{args.batch_size}_tau{args.tau}_lr{args.lr}_inChannels_{768}'
                                        f'_headnum{args.num_heads}_loss{best_loss}.pth')
         print(f"endtime: {datetime.now()}")
-
-'''
-1. 实现图增强的代码，生成正样本与负样本
-2. 构造出损失函数original-positive、original-negative、positive-negative
-'''
-
-
