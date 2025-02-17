@@ -97,9 +97,7 @@ if __name__ == '__main__':
                    'CALL': 6, 'STATICCALL': 7, 'DELEGATECALL': 8, 'RETURN': 9}
     edge_type, node_type, features_list, graphs, positive_graphs, negative_graphs = [], [], [], [], [], []
 
-    # path = 'E:\\Py_projects\\CrossVulDec\\inputdata'
-    path = 'E:\\Py_projects\\CrossVulDec\\inputdata'
-    # path = 'E:\\Py_projects\\CrossVulDec\\utils/inputdata_768'
+    path = './data/pretrain'
     cur_idx = 1
     print(f"start time: {datetime.now()}")
     for index, address in enumerate(os.listdir(path)):
@@ -119,7 +117,6 @@ if __name__ == '__main__':
             if type(adjM) is int:
                 continue
 
-            # node_types = np.array([dl.nodes['type'][i] for i in range(dl.nodes['total'])], dtype=np.int64)
             node_types = []
             positive_node_types = []
             negative_node_types = []
@@ -171,7 +168,6 @@ if __name__ == '__main__':
                 positive_node_types.append(positive_nodetype)
                 node_types.append(nodetype)
 
-            # print(f'node type is ok!')
             positive_node_types = np.array(positive_node_types, dtype=np.int64)
             negative_node_types = np.array(negative_node_types, dtype=np.int64)
             node_types = np.array(node_types, dtype=np.int64)
@@ -211,10 +207,6 @@ if __name__ == '__main__':
 
             negative_g.ndata['feats'] = torch.from_numpy(positive_features_array).float()
             negative_g.ndata['node_type'] = negative_node_type_tensor
-            '''
-                正样本：节点类型替换成另一个已有的节点类型
-                负样本：节点类型替换成另一个不具有的节点类型；控制流修改，条件语句变换等；将某些特征进行掩码，使一些重要信息确实
-            '''
 
             srcs, dsts = g.out_edges(g.nodes())
             edge_types = []
@@ -250,7 +242,6 @@ if __name__ == '__main__':
             negative_g.edata['edge_type'] = negative_edge_types_tensor
 
             features_list.append(features_array)
-            # for ii in range(64):
             sub_graphs.append(g)
             sub_positive_graphs.append(positive_g)
             sub_negative_graphs.append(negative_g)
@@ -289,13 +280,7 @@ if __name__ == '__main__':
 
     optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min')
-
-    # checkpoint = torch.load('./results/results_768/pretrain/checkpoint_epoch24_hiddendim128_layers2_gnns3_lenseq15_batchsize32_tau0.3_lr0.0002_inChannels_768_headnum8_loss4.978963116631991.pth')
-
     net.to(device)
-
-    # net.load_state_dict(checkpoint['state_dict'], strict=False)
-    # optimizer.load_state_dict(checkpoint['optimizer'])
 
     best_loss = 100
     for epoch in range(300):
@@ -308,9 +293,6 @@ if __name__ == '__main__':
             # print(f'index: {len(total_loss)+1}')
             # print(f"node number: {len(batched_graph.nodes())}")
             optimizer.zero_grad()
-
-            # gc.collect()
-            # torch.cuda.empty_cache()
 
             batched_graph = batched_data[0].to(device)
             positive_batched_graph = positive_batched_data[0].to(device)
